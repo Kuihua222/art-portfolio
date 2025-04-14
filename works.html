@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Art Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica', sans-serif;
+        }
+
+        body {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        nav {
+            padding: 2rem 5%;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            /* 新增以下两行 */
+            display: flex;
+            justify-content: center;
+        }
+
+        .categories {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            /* 新增以下三行 */
+            margin: 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .categories button {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .categories button.active {
+            color: #000;
+            border-bottom: 2px solid #000;
+        }
+
+        .gallery {
+            margin-top: 100px;
+            padding: 2rem 5%;
+            columns: 4;
+            column-gap: 1rem;
+        }
+
+        .image-container {
+            margin-bottom: 1rem;
+            break-inside: avoid;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        img:hover {
+            transform: scale(1.02);
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .gallery {
+                columns: 3;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .gallery {
+                columns: 2;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .gallery {
+                columns: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul class="categories">
+            <li><button class="active" data-category="all">全部</button></li>
+            <li><button data-category="众人">众人</button></li>
+            <li><button data-category="森林">森林</button></li>
+            <li><button data-category="苍蝇">苍蝇</button></li>
+            <li><button data-category="纸本">纸本</button></li>
+            <li><button data-category="未整理">未整理</button></li>
+            
+        </ul>
+    </nav>
+
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+        // 图片配置（根据实际文件夹结构修改）
+        const imageCategories = {
+            众人: [
+                './images/众人/1 众人.jpg',
+                './images/众人/2 众人.jpg',
+                './images/众人/3 众人.jpg',
+                './images/众人/4 众人.jpg',
+                './images/众人/5 众人.jpg',
+                './images/众人/6 众人.jpg',
+                './images/众人/7 众人.jpg',
+                './images/众人/8 众人.jpg',
+                './images/众人/9 众人.jpg',
+                './images/众人/10 众人.jpg',
+                './images/众人/11 众人.jpg',
+                // 继续添加更多图片...
+            ],
+            森林: [
+                'images/森林/1 森林.jpg',
+                'images/森林/2 森林.jpg',
+                'images/森林/3 森林.jpg',
+                'images/森林/4 森林.jpg',
+                'images/森林/5 森林.jpg',
+
+                // 继续添加更多图片...
+            ],
+            苍蝇: [
+                'images/苍蝇/1 苍蝇.jpg',
+                'images/苍蝇/2 苍蝇.jpg',
+                'images/苍蝇/3 苍蝇.jpg',
+                'images/苍蝇/4 苍蝇.jpg',
+                'images/苍蝇/5 苍蝇.jpg',
+                'images/苍蝇/6 苍蝇.jpg',
+                'images/苍蝇/7 苍蝇.jpg',
+                'images/苍蝇/8 苍蝇.jpg',
+                'images/苍蝇/9 苍蝇.jpg',
+                'images/苍蝇/10 苍蝇.jpg',
+                'images/苍蝇/11 苍蝇.jpg',
+
+                // 继续添加更多图片...
+            ],
+            纸本: [
+                'images/纸本/1 纸本.jpg',
+                'images/纸本/2 纸本.jpg',
+                'images/纸本/3 纸本.jpg',
+                'images/纸本/4 纸本.jpg',
+                'images/纸本/5 纸本.jpg',
+                'images/纸本/6 纸本.jpg',
+                'images/纸本/7 纸本.jpg',
+                'images/纸本/8 纸本.jpg',
+
+                // 继续添加更多图片...
+            ],
+            新类别标识: [
+                'images/新类别标识/1.jpg',
+                'images/新类别标识/2.jpg',
+                // 继续添加更多图片...
+            ]
+            
+        };
+
+        const gallery = document.getElementById('gallery');
+        const buttons = document.querySelectorAll('button[data-category]');
+
+        // 初始化加载全部图片
+        loadImages('all');
+
+        // 添加分类点击事件
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                buttons.forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                loadImages(button.dataset.category);
+            });
+        });
+
+        function loadImages(category) {
+            gallery.innerHTML = '';
+            const images = category === 'all' 
+                ? Object.values(imageCategories).flat() 
+                : imageCategories[category] || [];
+
+            images.forEach(imgPath => {
+                const container = document.createElement('div');
+                container.className = 'image-container';
+                
+                const img = new Image();
+                img.src = imgPath;
+                img.alt = "艺术作品";
+                
+                // 添加加载完成后的淡入效果
+                img.onload = () => {
+                    container.appendChild(img);
+                    gallery.appendChild(container);
+                }
+            });
+        }
+
+        // 窗口大小变化时重新布局
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                gallery.style.display = 'none';
+                gallery.offsetHeight; // 触发重绘
+                gallery.style.display = 'block';
+            }, 200);
+        });
+    </script>
+</body>
+</html>
