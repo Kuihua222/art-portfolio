@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Art Portfolio</title>
+    <style>
+        /* 原有样式保持不变 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica', sans-serif;
+        }
+
+        body {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        nav {
+            padding: 2rem 5%;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+        }
+
+        .categories {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            margin: 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* 新增折叠菜单样式 */
+        .dropdown {
+            position: absolute;
+            right: 5%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .dropdown-btn {
+            background: none;
+            border: none;
+            padding: 10px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .dropdown-btn:hover {
+            color: #000;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            min-width: 160px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            animation: scaleIn 0.2s ease-out;
+            transform-origin: top right;
+        }
+
+        .dropdown-content a {
+            color: #666;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s;
+        }
+
+        .dropdown-content a:hover {
+            background: #f8f9fa;
+            color: #000;
+        }
+
+        .show {
+            display: block;
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* 其他原有样式保持不变 */
+        .categories button {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .categories button.active {
+            color: #000;
+            border-bottom: 2px solid #000;
+        }
+
+        .gallery {
+            margin-top: 100px;
+            padding: 2rem 5%;
+            columns: 4;
+            column-gap: 1rem;
+        }
+
+        .image-container {
+            margin-bottom: 1rem;
+            break-inside: avoid;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        img:hover {
+            transform: scale(1.02);
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .gallery {
+                columns: 3;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .gallery {
+                columns: 2;
+            }
+            
+            .categories {
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .gallery {
+                columns: 1;
+            }
+            
+            nav {
+                padding: 1rem 5%;
+            }
+            
+            .dropdown {
+                right: 3%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul class="categories">
+            <li><button class="active" data-category="all">ALL</button></li>
+            <li><button data-category="2022">2022</button></li>
+            <li><button data-category="2023">2023</button></li>
+            <li><button data-category="2024">2024</button></li>
+            <li><button data-category="2025">2025</button></li>
+            <li><button data-category="?">?</button></li>
+        </ul>
+        
+        <!-- 新增折叠菜单 -->
+        <div class="dropdown">
+            <button class="dropdown-btn">☰</button>
+            <div class="dropdown-content">
+                <a href="./index.html">HOME</a>
+                <a href="./about.html">ABOUT</a>
+                <a href="./contact.html">CONTACT</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+        // 原有JavaScript代码保持不变...
+
+        // 新增折叠菜单功能
+        const dropdownBtn = document.querySelector('.dropdown-btn');
+        const dropdownContent = document.querySelector('.dropdown-content');
+
+        // 切换菜单显示
+        dropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownContent.classList.toggle('show');
+        });
+
+        // 点击页面其他区域关闭菜单
+        document.addEventListener('click', () => {
+            if (dropdownContent.classList.contains('show')) {
+                dropdownContent.classList.remove('show');
+            }
+        });
+
+        // 保持原有的图片加载代码...
+    </script>
+</body>
+</html>
+    <script>
+        // 图片配置（根据实际文件夹结构修改）
+        const imageCategories = {
+            2022: [
+                './images/2022/《DUdu~》10x20cm 木板油画 2022.jpg',
+                './images/2022/《一个地方》30x40cm 布面油画 2022.jpg',
+                './images/2022/《不喜欢的东西》50x40cm 布面油画 2022.jpg',
+                './images/2022/《临摹大卫霍克尼画中的风》   60x50cm  布面油画  2022.jpg',
+                './images/2022/《临摹弗里德里希，视线沿阶梯向上移动 》 50x70cm 布面油画 2022.jpg',
+                './images/2022/《人钟情于树》 25x30cm 布面油画 2022.jpg',
+                './images/2022/《人钟爱于自己》 30x45cm 布面油画 2022.jpg',
+                './images/2022/《仙人掌写生》30x50cm 布面油画 2022.jpg',
+                './images/2022/《众人1》50x50cm 布面油画 2022.jpg',
+                './images/2022/《众人2》20x20cm 布面油画 2022.jpg',
+                './images/2022/《众人3》20x20cm 布面油画 2022.jpg',
+                './images/2022/《众人4》40x40cm 布面油画 2022.jpg',
+                './images/2022/《众人5》40x30cm 布面油画 2022.jpg',
+                './images/2022/《众人故事》50x40cm 布面油画 2022.jpg',
+                './images/2022/《入眠》 40x50cm 布面油画 2022.jpg',
+                './images/2022/《入眠》10x20cm 木板油画 2022.jpg',
+                './images/2022/《写生模特眼》 5x10cm 纸本 2022.jpg',
+                './images/2022/《向那幻想宣战》45x30cm 木板油画 2022.jpg',
+                './images/2022/《夜里的人》  30x40cm   油画 细沙 土 白乳胶 2022 5.6.jpg',
+                './images/2022/《守点》10x20cm 木板油画 2022.jpg',
+                './images/2022/《思绪与幻想》 20x30cm 丙烯 碳条 色粉 水性彩铅 2022 9.5.jpg',
+                './images/2022/《恍惚》 30x40cm 油画 2022.jpg',
+                './images/2022/《愉悦》20x30cm 布面油画 2022.jpg',
+                './images/2022/《扭曲人脸》 5x10cm 纸本 2022.jpg',
+                './images/2022/《模特写生》 40x50cm 布面油画 2022.jpg',
+                './images/2022/《欲》 油画100x80cm 2022.jpg',
+                './images/2022/《液》50x60cm 布面油画 2022.jpg',
+                './images/2022/《清楚》  40x40cm 布面油画 丙烯 2022.jpg',
+                './images/2022/《独特房子》 5x10cm 纸本 2022.jpg',
+                './images/2022/《看不见听不见》80x60cm 布面油画 2022.jpg',
+                './images/2022/《瞩目》30x20cm 布面油画 2022.jpg',
+                './images/2022/《聚1》20x20cm 布面油画、裂纹膏、丙烯颜料 2022.jpg',
+                './images/2022/《裹》 20x20cm 布面油画 2022.jpg',
+                './images/2022/《过往》40x30cm 布面油画 2022.jpg',
+                './images/2022/《隐私歌剧》20x15cm 纸本水彩 2022.jpg',
+                './images/2022/《隐私歌剧》32x40cm 布面油画 2022.jpg',
+                // 继续添加更多图片...
+            ],
+            2023: [
+                './images/2023/《丰收》 30x40cm 布面油画 2023.jpg',
+                './images/2023/《今天 ？明天？ 今天？》 20x20cm 综合材料 2023.jpg',
+                './images/2023/《博物馆的丛林动物》 20x30cm 布面油画 2023.jpg',
+                './images/2023/《后》 70x80cm 布面油画 2023.jpg',
+                './images/2023/《快了》20x30cm 布面油画 2023.jpg',
+                './images/2023/《我们满心欢喜》 20x20cm 布面油画 2023.jpg',
+                './images/2023/《打狗》 20x20cm 木板油画2023.jpg',
+                './images/2023/《拜托》 20x20cm 综合材料 2023.jpg',
+                './images/2023/《施工队》 板绘 尺寸可变 2023.jpg',
+                './images/2023/《无2》 10x15cm 纸本 2023.jpg',
+                './images/2023/《无3》 10x15cm 纸本 2023.jpg',
+                './images/2023/《无》 10x15cm 纸本 2023.jpg',
+                './images/2023/《无》 20x20cm 布面油画 2023.jpg',
+                './images/2023/《早点,再早点》20x30cm 布面油画 2023.jpg',
+                './images/2023/《树与幻想》 200X150cm 布面油画 2023.jpg',
+                './images/2023/《照相馆静坐》 45x45cm 布面油画 2023.jpg',
+                './images/2023/《牵着它》 30x30cm 布面油画 .jpg',
+                './images/2023/《独自一人》 20x20cm 木板油画2023.jpg.jpg',
+                './images/2023/《看不清也记不清》20x20cm 布面油画 2023.jpg',
+                './images/2023/《看不见，看不清》 20x20cm 布面油画.jpg',
+                './images/2023/《肋》 30x40cm 纸本素描 2023.jpg',
+                './images/2023/《蜘蛛侠夜会蝙蝠侠》 40x40cm 布面油画 20230.jpg',
+                './images/2023/《行“车”出发》  20x20cm 木板油画 2023 —— 450.jpg',
+                './images/2023/《谁在那？》 20x20cm 布面油画 2023.jpg',
+                './images/2023/《起伏》 20x20cm 木板油画 2023.jpg',
+                './images/2023/《这是什么？》 78.1x108.6cm 纸本素描 2023.jpg',
+                './images/2023/《违规》 20x20cm 木板油画2023.jpg.jpg',
+
+                // 继续添加更多图片...
+            ],
+            2024: [
+                './images/2024/《优势在我》 20x20cm 布面油画 2024.jpg',
+                './images/2024/《冲突》 20x20cm 布面油画 2024.jpg',
+                './images/2024/《印象》 20x20cm 布面油画 2024.jpg',
+                './images/2024/《嘴脸》 10x15cm 纸本 2024.jpg',
+                './images/2024/《挣扎于断层之间》270x200cm 布面油画 2024.jpg',
+                './images/2024/《斗殴》 40x40cm 布面油画 2024.jpg',
+                './images/2024/《木块》之一 .jpg',
+                './images/2024/《桌面的部分木块》 木块 2024.jpg',
+                './images/2024/《笔记》 10x15cm 纸本 2024.jpg',
+                './images/2024/《红蓝对》 电子板绘 尺寸可变 2024.jpg',
+                './images/2024/《纸本2》 10x15cm 纸本 2024.jpg',
+                './images/2024/《纸本3》 10x15cm 纸本 2024.jpg',
+                './images/2024/《纸本4》 10x15cm 纸本 2024.jpg',
+                './images/2024/《纸本》 10x15cm 纸本 2024.jpg',
+                './images/2024/《舞蹈》 10x15cm 纸本 2024.jpg',
+                './images/2024/《赌徒与他的幻想》 20x20cm 布面油画 2024.jpg',
+                './images/2024/《？》 20x30cm 布面油画 2024.jpg',
+                './images/2024/拼图1 木板油画 5x5cm 2024.jpg',
+                './images/2024/拼图10 木板油画 8x8cm 2024.jpg',
+                './images/2024/拼图11 木板油画 8x8cm 2024.jpg',
+                './images/2024/拼图12 木板油画 8x8cm 2024.jpg',
+                './images/2024/拼图2 木板油画 5x5cm 2024.jpg',
+                './images/2024/拼图3 木板油画 5x5cm 2024.jpg',
+                './images/2024/拼图4 木板油画 5x5cm 2024.jpg',
+                './images/2024/拼图5 木板油画 5x5cm 2024.jpg',
+                './images/2024/拼图6 木板油画 5x5cm 2024.jpg',
+                './images/2024/拼图7 木板油画 8x8cm 2024.jpg',
+                './images/2024/拼图8 木板油画 8x8cm 2024.jpg',
+                './images/2024/拼图9 木板油画 8x8cm 2024.jpg',
+
+                // 继续添加更多图片...
+            ],
+            2025: [
+                'images/2025/1 2025.jpg',
+                'images/2025/2 2025.jpg',
+                'images/2025/3 2025.jpg',
+                'images/2025/4 2025.jpg',
+                'images/2025/5 2025.jpg',
+                'images/2025/6 2025.jpg',
+                'images/2025/7 2025.jpg',
+                'images/2025/8 2025.jpg',
+
+                // 继续添加更多图片...
+            ],
+            新类别标识: [
+                'images/新类别标识/1.jpg',
+                'images/新类别标识/2.jpg',
+                // 继续添加更多图片...
+            ]
+            
+        };
+
+        const gallery = document.getElementById('gallery');
+        const buttons = document.querySelectorAll('button[data-category]');
+
+        // 初始化加载ALL图片
+        loadImages('all');
+
+        // 添加分类点击事件
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                buttons.forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                loadImages(button.dataset.category);
+            });
+        });
+
+        function loadImages(category) {
+            gallery.innerHTML = '';
+            const images = category === 'all' 
+                ? Object.values(imageCategories).flat() 
+                : imageCategories[category] || [];
+
+            images.forEach(imgPath => {
+                const container = document.createElement('div');
+                container.className = 'image-container';
+                
+                const img = new Image();
+                img.src = imgPath;
+                img.alt = "艺术作品";
+                
+                // 添加加载完成后的淡入效果
+                img.onload = () => {
+                    container.appendChild(img);
+                    gallery.appendChild(container);
+                }
+            });
+        }
+
+        // 窗口大小变化时重新布局
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                gallery.style.display = 'none';
+                gallery.offsetHeight; // 触发重绘
+                gallery.style.display = 'block';
+            }, 200);
+        });
+    </script>
+</body>
+</html>
