@@ -470,7 +470,7 @@
             function loadImages(category) {
                 gallery.innerHTML = '';
                 const imagesToLoad =
-                    category === '2024'
+                    category === 'all'
                         ? Object.values(imageCategories).flat()
                         : imageCategories[category] || [];
 
