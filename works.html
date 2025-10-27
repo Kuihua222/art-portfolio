@@ -396,8 +396,8 @@
                 <button data-category="all" >ALL</button>
                 <button data-category="2022">2022</button>
                 <button data-category="2023">2023</button>
-                <button data-category="2024" class="active">2024</button>
-                <button data-category="2025">2025</button>
+                <button data-category="2024">2024</button>
+                <button data-category="2025" class="active">2025</button> <!-- 默认选中2025 -->
                 <button data-category="other">其他</button>
             </div>
         </div>
@@ -419,7 +419,7 @@
             // 存储当前正在加载的图片任务，用于切换分类时中断
             let currentImageLoadTasks = [];
             // 记录当前激活的分类，避免重复加载
-            let activeCategory = '2024';
+            let activeCategory = '2025'; // 默认分类改为2025
             // 初始加载状态标记
             let initialLoadComplete = false;
             let initialLoadFailed = false;
@@ -816,7 +816,21 @@
                     setTimeout(init, 1000);
                     return;
                 }
-                loadImages('2024', true);
+                
+                // 从localStorage获取保存的分类，默认使用2025
+                const storedCategory = localStorage.getItem('currentCategory');
+                const initialCategory = storedCategory || '2025';
+                
+                // 更新UI选中状态
+                allCategoryButtons.forEach(btn => {
+                    if (btn.dataset.category === initialCategory) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                loadImages(initialCategory, true);
             }
 
             // DOM就绪后初始化
@@ -833,12 +847,20 @@
                 }
             });
 
-            // 分类切换事件
+            // 分类切换事件 - 保存到localStorage
             allCategoryButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     const category = button.dataset.category;
                     allCategoryButtons.forEach((b) => b.classList.remove('active'));
                     button.classList.add('active');
+                    
+                    // 保存当前分类到本地存储
+                    try {
+                        localStorage.setItem('currentCategory', category);
+                    } catch (error) {
+                        console.warn('无法存储分类状态:', error);
+                    }
+                    
                     loadImages(category);
                     dropdownContent.classList.remove('show');
                     dropdownBtn.setAttribute('aria-expanded', 'false');
