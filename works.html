@@ -162,6 +162,51 @@
             cursor: pointer;
         }
 
+        .image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: #f0f0f0;
+            border-radius: var(--border-radius-base);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 占位符加载动画 */
+        .image-placeholder::before {
+            content: "";
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ccc;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .retry-btn {
+            background: var(--background-white);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+        }
+
+        .retry-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
         img {
             width: 100%;
             height: auto;
@@ -228,7 +273,6 @@
             width: auto;
             height: auto;
         }
-        
 
         .lightbox-close {
             position: absolute;
@@ -249,6 +293,45 @@
 
         .lightbox-close:hover {
             color: var(--secondary-color);
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 50px;
+            color: var(--secondary-color);
+            font-size: 1.2rem;
+        }
+
+        .initial-load-error {
+            text-align: center;
+            padding: 50px;
+            color: #e74c3c;
+            font-size: 1.2rem;
+        }
+
+        .reload-page-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+
+        .reload-page-btn:hover {
+            background: #555;
+        }
+
+        /* 分批加载进度提示样式 */
+        .batch-loading {
+            text-align: center;
+            padding: 20px 0;
+            color: var(--secondary-color);
+            font-size: 1rem;
+            break-inside: avoid; /* 防止进度提示被分割到下一列 */
         }
 
         @media (max-width: 1200px) {
@@ -333,6 +416,23 @@
 
     <script>
         (() => {
+            // 存储当前正在加载的图片任务，用于切换分类时中断
+            let currentImageLoadTasks = [];
+            // 记录当前激活的分类，避免重复加载
+            let activeCategory = '2024';
+            // 初始加载状态标记
+            let initialLoadComplete = false;
+            let initialLoadFailed = false;
+            // 懒加载观察器实例（全局唯一）
+            let lazyLoadObserver = null;
+
+            // 分批加载核心配置
+            const BATCH_SIZE = 5; // 每批加载5张图片
+            let currentBatch = 1; // 当前加载批次
+            let totalBatches = 0; // 总批次
+            let imageQueue = []; // 图片加载队列
+            let isBatchLoading = false; // 是否正在加载批次（防止并发）
+            
             const imageCategories = {
                 2022: [
                     './images/2022/《DUdu~》10x20cm 木板油画 2022.jpg',
@@ -438,6 +538,15 @@
                     './images/2025/《生活角》 摄影 2025.jpg',
                     './images/2025/《睡姿》 20x30cm 木板油画 2025.png',
                     './images/2025/《无》 10x10cm 纸本 2025.png',
+                    './images/2025/《型》 20x20cm 木板油画 2025.png',
+                    './images/2025/《根》 20x20cm 木板油画 2025.png',
+                    './images/2025/《痕》 20x20cm 木板油画 2025.png',
+                    './images/2025/《工》 20x20cm 木板油画 2025.png',
+                    './images/2025/身体符号绘画 黑底硬卡纸 铅笔 全开纸本 2025.png',
+                    './images/2025/身体绘画展览.jpg',
+                    './images/2025/身体绘画展览2.jpg',
+                    './images/2025/《秩序》综合媒材（木、砖、金属、绘画痕迹） 2025 图3.jpg',
+                    './images/2025/《秩序》综合媒材（木、砖、金属、绘画痕迹） 2025 图4.jpg',
 
                 ],
                 other: [
@@ -456,7 +565,7 @@
             const lightboxCloseBtn = lightbox.querySelector('.lightbox-close');
             const lightboxOverlay = lightbox.querySelector('.lightbox-overlay');
 
-            // 动态设置图片最大尺寸，保证自适应视口
+            // 动态设置灯箱图片尺寸
             function adjustLightboxImageSize() {
                 if (lightbox.getAttribute('aria-hidden') === 'true') return;
                 const maxWidth = window.innerWidth * 0.7;
@@ -465,64 +574,278 @@
                 lightboxImg.style.maxHeight = maxHeight + 'px';
             }
 
-            function loadImages(category) {
-                gallery.innerHTML = '';
-                const imagesToLoad =
-                    category === 'all'
-                        ? Object.values(imageCategories).flat()
-                        : imageCategories[category] || [];
+            // 带次数限制的图片重试加载
+            function retryLoadImage(imgPath, container, placeholder, retryCount = 1) {
+                if (retryCount > 2) {
+                    placeholder.innerHTML = `
+                        加载失败<br>
+                        <span style="font-size:0.8rem;color:#999;">请稍后刷新页面重试</span>
+                    `;
+                    return;
+                }
 
+                placeholder.innerHTML = `重试加载中（${retryCount}/2）...`;
+                
+                const img = new Image();
+                currentImageLoadTasks.push({ img, container });
+
+                img.src = imgPath;
+                
+                img.decode().then(() => {
+                    if (activeCategory !== getActiveCategory()) return;
+                    
+                    container.removeChild(placeholder);
+                    container.appendChild(img);
+                    currentImageLoadTasks = currentImageLoadTasks.filter(task => task.img !== img);
+                }).catch(err => {
+                    console.error(`图片重试加载失败(${retryCount}次): ${imgPath}`, err);
+                    if (activeCategory !== getActiveCategory()) return;
+                    
+                    placeholder.innerHTML = `
+                        加载失败<br>
+                        <button class="retry-btn">再次尝试（剩余${2 - retryCount}次）</button>
+                    `;
+                    placeholder.querySelector('.retry-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        retryLoadImage(imgPath, container, placeholder, retryCount + 1);
+                    });
+                    
+                    currentImageLoadTasks = currentImageLoadTasks.filter(task => task.img !== img);
+                });
+            }
+
+            // 获取当前激活的分类
+            function getActiveCategory() {
+                return document.querySelector('.dropdown-content button.active').dataset.category;
+            }
+
+            // 初始化懒加载观察器
+            function initLazyLoadObserver() {
+                if (lazyLoadObserver) {
+                    lazyLoadObserver.disconnect();
+                }
+
+                lazyLoadObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const container = entry.target;
+                            const imgPath = container.dataset.imgPath;
+                            const placeholder = container.querySelector('.image-placeholder');
+                            const img = container.querySelector('img');
+
+                            if (imgPath && placeholder && !img) {
+                                loadSingleImage(imgPath, container, placeholder);
+                            }
+                            lazyLoadObserver.unobserve(container);
+                        }
+                    });
+                }, { 
+                    rootMargin: '800px 0px',
+                    threshold: 0.1 
+                });
+            }
+
+            // 加载单张图片
+            function loadSingleImage(imgPath, container, placeholder) {
+                const img = new Image();
+                container.dataset.imgPath = imgPath;
+                currentImageLoadTasks.push({ img, container });
+
+                img.src = imgPath;
+                img.alt = `艺术作品 - ${activeCategory} 系列: ${imgPath.split('/').pop()}`;
+                
+                img.decode().then(() => {
+                    if (activeCategory !== getActiveCategory()) return;
+                    
+                    container.removeChild(placeholder);
+                    container.appendChild(img);
+                    currentImageLoadTasks = currentImageLoadTasks.filter(task => task.img !== img);
+                }).catch(err => {
+                    console.error(`图片解码失败: ${imgPath}`, err);
+                    if (activeCategory !== getActiveCategory()) return;
+                    
+                    placeholder.innerHTML = `
+                        加载失败<br>
+                        <button class="retry-btn">重试</button>
+                    `;
+                    placeholder.querySelector('.retry-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        retryLoadImage(imgPath, container, placeholder, 1);
+                    });
+                    
+                    currentImageLoadTasks = currentImageLoadTasks.filter(task => task.img !== img);
+                });
+            }
+
+            // 初始化批次配置
+            function initBatchConfig(images) {
+                imageQueue = [...images];
+                totalBatches = Math.ceil(imageQueue.length / BATCH_SIZE);
+                currentBatch = 1;
+                isBatchLoading = false;
+            }
+
+            // 显示批次加载进度
+            function showBatchProgress() {
+                let progressEl = document.querySelector('.batch-loading');
+                if (!progressEl) {
+                    progressEl = document.createElement('div');
+                    progressEl.className = 'batch-loading';
+                    gallery.appendChild(progressEl);
+                }
+                progressEl.textContent = `正在加载第 ${currentBatch}/${totalBatches} 批...`;
+            }
+
+            // 加载单批次图片
+            function loadSingleBatch() {
+                if (isBatchLoading || imageQueue.length === 0 || currentBatch > totalBatches) {
+                    if (imageQueue.length === 0) {
+                        initialLoadComplete = true;
+                        const progressEl = document.querySelector('.batch-loading');
+                        if (progressEl) progressEl.remove();
+                    }
+                    return;
+                }
+
+                isBatchLoading = true;
+                showBatchProgress();
+
+                const currentBatchImages = imageQueue.splice(0, BATCH_SIZE);
+                const totalImages = currentBatchImages.length;
+                let processedCount = 0;
+
+                const fragment = document.createDocumentFragment();
+                currentBatchImages.forEach((imgPath, index) => {
+                    const containerIndex = (currentBatch - 1) * BATCH_SIZE + index;
+                    const container = document.createElement('div');
+                    container.className = 'image-container';
+                    container.style.animationDelay = `${containerIndex * 0.05}s`;
+                    container.dataset.imgPath = imgPath;
+
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'image-placeholder';
+                    placeholder.textContent = '等待加载...';
+                    container.appendChild(placeholder);
+
+                    fragment.appendChild(container);
+                });
+                gallery.appendChild(fragment);
+
+                function onImageProcessed() {
+                    processedCount++;
+                    if (processedCount === totalImages) {
+                        isBatchLoading = false;
+                        currentBatch++;
+                        const delay = currentBatch < totalBatches ? 0 : 500;
+                        setTimeout(loadSingleBatch, delay);
+                    }
+                }
+
+                currentBatchImages.forEach((imgPath, index) => {
+                    const container = gallery.children[gallery.children.length - totalImages + index];
+                    const placeholder = container.querySelector('.image-placeholder');
+
+                    setTimeout(() => {
+                        loadSingleImage(imgPath, container, placeholder);
+                        setTimeout(onImageProcessed, 100);
+                    }, index * 200);
+                });
+            }
+
+            // 主加载函数
+            function loadImages(category, isInitialLoad = false) {
+                if (category === activeCategory && !isInitialLoad) return;
+                activeCategory = category;
+
+                // 清理旧资源
+                currentImageLoadTasks.forEach(task => {
+                    task.img.src = '';
+                    if (task.container.parentNode) task.container.parentNode.removeChild(task.container);
+                });
+                currentImageLoadTasks = [];
+                gallery.innerHTML = '<div class="loading-indicator" id="initial-loading">准备加载...</div>';
+                initialLoadComplete = false;
+                initialLoadFailed = false;
+
+                // 获取图片列表
+                const imagesToLoad = category === 'all'
+                    ? Object.values(imageCategories).flat()
+                    : imageCategories[category] || [];
+
+                // 无图片处理
                 if (imagesToLoad.length === 0) {
                     gallery.innerHTML = `<div style="text-align:center; padding:50px; color:${getComputedStyle(
                         document.body
                     ).getPropertyValue('--secondary-color').trim()}; font-size:1.2rem;">此分类暂无作品。</div>`;
+                    initialLoadComplete = true;
+                    initialLoadFailed = false;
                     return;
                 }
 
-                imagesToLoad.forEach((imgPath, index) => {
-                    const container = document.createElement('div');
-                    container.className = 'image-container';
-                    container.style.animationDelay = `${index * 0.05}s`;
+                // 启动分批加载（移除初始提示）
+                initBatchConfig(imagesToLoad);
+                initLazyLoadObserver();
+                const initialLoadingEl = document.getElementById('initial-loading');
+                if (initialLoadingEl) initialLoadingEl.remove();
+                loadSingleBatch();
 
-                    const img = new Image();
-                    img.src = imgPath;
-                    img.alt = `艺术作品 - ${category} 系列的第 ${index + 1} 幅`;
-
-                    img.onload = () => {
-                        container.appendChild(img);
-                        gallery.appendChild(container);
-                    };
-                    img.onerror = () => {
-                        console.error(`图片加载失败: ${imgPath}`);
-                        container.innerHTML = `<div style="text-align:center; padding:20px; background-color:#f0f0f0; color:#999; border-radius:var(--border-radius-base); min-height:150px; display:flex; align-items:center; justify-content:center;">图片加载失败: ${
-                            imgPath.split('/').pop()
-                        }</div>`;
-                        gallery.appendChild(container);
-                    };
-                });
+                // 超时检测
+                if (isInitialLoad) {
+                    setTimeout(() => {
+                        if (!initialLoadComplete) {
+                            console.warn('分批加载超时，尝试重新加载当前分类');
+                            initialLoadFailed = true;
+                            gallery.innerHTML = `
+                                <div class="initial-load-error">
+                                    加载超时，请尝试重新加载当前分类<br>
+                                    <button class="reload-page-btn" id="reload-category-btn">重新加载 ${category} 分类</button>
+                                </div>
+                            `;
+                            document.getElementById('reload-category-btn').addEventListener('click', () => {
+                                loadImages(category, true);
+                            });
+                        }
+                    }, 15000);
+                }
             }
 
-            loadImages('2024');
+            // 初始化
+            function init() {
+                if (!gallery) {
+                    console.error('未找到gallery元素，1秒后重试');
+                    setTimeout(init, 1000);
+                    return;
+                }
+                loadImages('2024', true);
+            }
 
+            // DOM就绪后初始化
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+            // 页面可见性变化监听
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && initialLoadFailed) {
+                    loadImages(getActiveCategory(), true);
+                }
+            });
+
+            // 分类切换事件
             allCategoryButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     const category = button.dataset.category;
                     allCategoryButtons.forEach((b) => b.classList.remove('active'));
                     button.classList.add('active');
                     loadImages(category);
-
                     dropdownContent.classList.remove('show');
                     dropdownBtn.setAttribute('aria-expanded', 'false');
                 });
             });
 
-            dropdownContent.querySelectorAll('a').forEach((link) => {
-                link.addEventListener('click', () => {
-                    dropdownContent.classList.remove('show');
-                    dropdownBtn.setAttribute('aria-expanded', 'false');
-                });
-            });
-
+            // 下拉菜单切换
             dropdownBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const isExpanded = dropdownBtn.getAttribute('aria-expanded') === 'true';
@@ -530,6 +853,7 @@
                 dropdownBtn.setAttribute('aria-expanded', !isExpanded);
             });
 
+            // 点击外部关闭下拉菜单
             document.addEventListener('click', (e) => {
                 if (
                     !dropdownContent.contains(e.target) &&
@@ -541,13 +865,17 @@
                 }
             });
 
+            // 灯箱打开
             gallery.addEventListener('click', (e) => {
-                const target = e.target;
-                if (target.tagName === 'IMG' && target.closest('.image-container')) {
+                if (e.target.classList.contains('retry-btn')) return;
+                
+                const target = e.target.closest('.image-container')?.querySelector('img');
+                if (target) {
                     openLightbox(target.src, target.alt);
                 }
             });
 
+            // 打开灯箱
             function openLightbox(src, alt) {
                 lightboxImg.src = src;
                 lightboxImg.alt = alt || '艺术作品放大展示';
@@ -557,6 +885,7 @@
                 adjustLightboxImageSize();
             }
 
+            // 关闭灯箱
             function closeLightbox() {
                 lightbox.setAttribute('aria-hidden', 'true');
                 lightboxImg.src = '';
@@ -565,18 +894,20 @@
                 document.body.style.overflow = '';
             }
 
+            // 灯箱关闭事件
             lightboxCloseBtn.addEventListener('click', closeLightbox);
             lightboxOverlay.addEventListener('click', closeLightbox);
-
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && lightbox.getAttribute('aria-hidden') === 'false') {
                     closeLightbox();
                 }
             });
 
-            window.addEventListener('resize', () => {
-                adjustLightboxImageSize();
-            });
+            // 窗口调整时重设灯箱尺寸
+            window.addEventListener('resize', adjustLightboxImageSize);
+
+            // 初始化懒加载观察器
+            initLazyLoadObserver();
         })();
     </script>
 </body>
